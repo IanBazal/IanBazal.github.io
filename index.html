@@ -1,0 +1,1294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ian baz chat room by abdel</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:           #0b0b12;
+      --bg2:          #111119;
+      --bg3:          #17171f;
+      --surface:      #1c1c28;
+      --surface2:     #222232;
+      --border:       #2c2c42;
+      --accent:       #7c3aed;
+      --accent-h:     #6d28d9;
+      --accent-light: #a78bfa;
+      --accent-glow:  rgba(124,58,237,0.25);
+      --text:         #f0eeff;
+      --text-muted:   #8880aa;
+      --text-dim:     #4e4a6a;
+      --danger:       #f87171;
+      --danger-dim:   rgba(248,113,113,0.12);
+      --gold:         #fbbf24;
+      --gold-dim:     rgba(251,191,36,0.12);
+      --green:        #34d399;
+      --green-dim:    rgba(52,211,153,0.12);
+      --announce:     rgba(124,58,237,0.15);
+    }
+
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      height: 100dvh;
+      display: flex; flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* ─── LOADER ──────────────────────────────────────── */
+    #loader {
+      position: fixed; inset: 0; display: flex;
+      align-items: center; justify-content: center;
+      background: var(--bg); z-index: 999;
+      font-size: .95rem; color: var(--text-muted); letter-spacing: .04em;
+    }
+    .dot-spin {
+      display: inline-block; width: 8px; height: 8px;
+      border-radius: 50%; background: var(--accent);
+      margin-right: 10px; animation: pulse 1s ease-in-out infinite;
+    }
+    @keyframes pulse { 0%,100%{opacity:.3;transform:scale(.8)} 50%{opacity:1;transform:scale(1)} }
+
+    /* ─── BAN SCREEN ──────────────────────────────────── */
+    #ban-screen {
+      display: none; align-items: center; justify-content: center;
+      min-height: 100dvh; padding: 24px;
+      background: radial-gradient(ellipse at 50% 0%, #2a0a0a 0%, var(--bg) 70%);
+    }
+    .ban-card {
+      width: 100%; max-width: 420px;
+      background: var(--surface); border: 1px solid rgba(248,113,113,.3);
+      border-radius: 22px; padding: 40px 36px; text-align: center;
+      box-shadow: 0 30px 80px rgba(0,0,0,.6);
+    }
+    .ban-icon { font-size: 3rem; margin-bottom: 16px; }
+    .ban-title { font-size: 1.5rem; font-weight: 800; color: var(--danger); margin-bottom: 8px; }
+    .ban-sub { color: var(--text-muted); font-size: .9rem; margin-bottom: 20px; }
+    .ban-detail {
+      background: var(--danger-dim); border: 1px solid rgba(248,113,113,.2);
+      border-radius: 12px; padding: 14px 18px; text-align: left; margin-bottom: 20px;
+      font-size: .875rem; line-height: 1.6;
+    }
+    .ban-detail b { color: var(--danger); }
+    .ban-expires { font-size: .8rem; color: var(--text-dim); margin-top: 8px; }
+
+    /* ─── USERNAME PICKER ────────────────────────────── */
+    #username-screen {
+      display: none; align-items: center; justify-content: center;
+      min-height: 100dvh; padding: 24px;
+      background: radial-gradient(ellipse at 60% 0%, #1a083a 0%, var(--bg) 65%);
+    }
+
+    /* ─── AUTH SCREEN ─────────────────────────────────── */
+    #auth-screen {
+      display: none; align-items: center; justify-content: center;
+      min-height: 100dvh; padding: 24px;
+      background: radial-gradient(ellipse at 60% 0%, #1a083a 0%, var(--bg) 65%);
+    }
+    .auth-card {
+      width: 100%; max-width: 420px;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 22px; padding: 40px 36px;
+      box-shadow: 0 30px 80px rgba(0,0,0,.6), 0 0 0 1px rgba(255,255,255,.04) inset;
+    }
+    .auth-brand { text-align: center; margin-bottom: 30px; }
+    .auth-brand-icon {
+      width: 52px; height: 52px; border-radius: 14px;
+      background: linear-gradient(135deg, var(--accent), var(--accent-light));
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.4rem; margin: 0 auto 14px;
+      box-shadow: 0 8px 24px var(--accent-glow);
+    }
+    .auth-brand-name {
+      font-size: 1.25rem; font-weight: 700;
+      background: linear-gradient(135deg, #fff 20%, var(--accent-light) 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    }
+    .auth-brand-sub { font-size: .8rem; color: var(--text-dim); margin-top: 4px; letter-spacing: .05em; }
+
+    .tabs {
+      display: flex; background: var(--bg2);
+      border-radius: 12px; padding: 4px; margin-bottom: 26px; gap: 4px;
+    }
+    .tab {
+      flex: 1; padding: 9px 12px; background: transparent; border: none;
+      color: var(--text-muted); font-size: .875rem; font-weight: 500;
+      border-radius: 9px; cursor: pointer; transition: all .18s; font-family: inherit;
+    }
+    .tab.active { background: var(--accent); color: #fff; box-shadow: 0 4px 14px var(--accent-glow); }
+
+    .form-panel { display: none; }
+    .form-panel.visible { display: block; }
+
+    .field { margin-bottom: 16px; }
+    .field-label {
+      display: block; font-size: .72rem; font-weight: 700;
+      color: var(--text-dim); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 7px;
+    }
+    .field-input {
+      width: 100%; padding: 11px 15px;
+      background: var(--bg2); border: 1.5px solid var(--border);
+      border-radius: 10px; color: var(--text); font-size: .925rem;
+      font-family: inherit; outline: none;
+      transition: border-color .18s, box-shadow .18s;
+    }
+    .field-input::placeholder { color: var(--text-dim); }
+    .field-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
+    .field-input.is-error { border-color: var(--danger); }
+    .field-input.is-error:focus { box-shadow: 0 0 0 3px var(--danger-dim); }
+    .field-err { font-size: .775rem; color: var(--danger); margin-top: 5px; display: none; }
+    .field-err.show { display: block; }
+    .form-err {
+      font-size: .8rem; color: var(--danger);
+      background: var(--danger-dim); border: 1px solid rgba(248,113,113,.2);
+      border-radius: 8px; padding: 9px 13px; margin-bottom: 14px; display: none;
+    }
+    .form-err.show { display: block; }
+    .btn-primary {
+      width: 100%; padding: 13px; background: var(--accent); border: none;
+      border-radius: 11px; color: #fff; font-size: .95rem; font-weight: 600;
+      cursor: pointer; font-family: inherit;
+      transition: background .15s, transform .1s, box-shadow .15s;
+      box-shadow: 0 4px 18px var(--accent-glow); margin-top: 4px;
+    }
+    .btn-primary:hover { background: var(--accent-h); }
+    .btn-primary:active { transform: scale(.98); }
+    .btn-primary:disabled { opacity: .45; cursor: not-allowed; transform: none; }
+
+    /* ─── CHAT SCREEN ─────────────────────────────────── */
+    #chat-screen { display: none; flex-direction: column; height: 100dvh; }
+
+    .chat-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 20px; height: 60px; flex-shrink: 0;
+      background: var(--bg2); border-bottom: 1px solid var(--border); gap: 12px;
+    }
+    .chat-title {
+      font-size: .95rem; font-weight: 700; white-space: nowrap;
+      overflow: hidden; text-overflow: ellipsis;
+      background: linear-gradient(135deg, #fff 0%, var(--accent-light) 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    }
+    .chat-header-right { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+    .chat-me { font-size: .8rem; color: var(--text-muted); white-space: nowrap; }
+    .chat-me b { color: var(--accent-light); font-weight: 600; }
+    .btn-logout {
+      padding: 6px 13px; background: transparent; border: 1px solid var(--border);
+      border-radius: 8px; color: var(--text-muted);
+      font-size: .78rem; cursor: pointer; font-family: inherit;
+      transition: all .18s; white-space: nowrap;
+    }
+    .btn-logout:hover { color: var(--danger); border-color: var(--danger); background: var(--danger-dim); }
+
+    .msg-list {
+      flex: 1; overflow-y: auto; padding: 18px 20px;
+      display: flex; flex-direction: column; gap: 10px;
+      scrollbar-width: thin; scrollbar-color: var(--border) transparent;
+    }
+    .msg-list::-webkit-scrollbar { width: 5px; }
+    .msg-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+    .empty {
+      display: flex; flex-direction: column; align-items: center;
+      justify-content: center; flex: 1; gap: 10px;
+      color: var(--text-dim); text-align: center; padding: 40px;
+    }
+    .empty-icon { font-size: 2.5rem; opacity: .4; }
+    .empty-title { font-size: 1rem; font-weight: 600; }
+    .empty-sub { font-size: .825rem; }
+
+    /* ─── MESSAGE ROW ─────────────────────────────────── */
+    .msg-row {
+      display: flex; flex-direction: column; max-width: 72%;
+      animation: msgIn .2s ease-out;
+    }
+    @keyframes msgIn { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
+    .msg-row.own  { align-self: flex-end;   align-items: flex-end; }
+    .msg-row.other{ align-self: flex-start; align-items: flex-start; }
+
+    .msg-row.sys {
+      align-self: center; max-width: 90%;
+      align-items: center;
+    }
+    .msg-bubble-sys {
+      background: var(--announce); border: 1px solid var(--accent);
+      border-radius: 12px; padding: 10px 18px;
+      font-size: .875rem; color: var(--accent-light);
+      text-align: center; font-weight: 500;
+    }
+    .msg-bubble-sys .sys-label {
+      font-size: .7rem; font-weight: 800; letter-spacing: .08em;
+      color: var(--accent); text-transform: uppercase; margin-bottom: 3px;
+    }
+
+    .msg-meta { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
+    .msg-name {
+      font-size: .72rem; font-weight: 700;
+      color: var(--accent-light); cursor: pointer;
+      transition: color .15s; border: none; background: none;
+      font-family: inherit; padding: 0;
+    }
+    .msg-name:hover { color: #fff; text-decoration: underline; }
+    .msg-time { font-size: .68rem; color: var(--text-dim); }
+
+    .owner-tag {
+      display: inline-flex; align-items: center; gap: 3px;
+      font-size: .6rem; font-weight: 800; letter-spacing: .06em;
+      color: var(--gold); background: var(--gold-dim);
+      border: 1px solid rgba(251,191,36,.3);
+      border-radius: 4px; padding: 1px 5px; text-transform: uppercase;
+    }
+
+    .msg-bubble {
+      padding: 9px 15px; border-radius: 16px;
+      font-size: .9rem; line-height: 1.55; word-break: break-word;
+    }
+    .own   .msg-bubble { background: var(--accent); color: #fff; border-bottom-right-radius: 4px; }
+    .other .msg-bubble { background: var(--surface2); color: var(--text); border: 1px solid var(--border); border-bottom-left-radius: 4px; }
+
+    /* ─── INPUT BAR ────────────────────────────────────── */
+    .input-wrap { flex-shrink: 0; position: relative; }
+
+    /* Autocomplete dropdown */
+    #autocomplete {
+      display: none; position: absolute; bottom: calc(100% + 6px); left: 20px; right: 20px;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 12px; overflow: hidden;
+      box-shadow: 0 -10px 40px rgba(0,0,0,.5); z-index: 50; max-height: 180px; overflow-y: auto;
+    }
+    #autocomplete.open { display: block; }
+    .ac-header {
+      padding: 7px 14px; font-size: .7rem; font-weight: 700;
+      color: var(--text-dim); text-transform: uppercase; letter-spacing: .06em;
+      border-bottom: 1px solid var(--border); background: var(--bg2);
+    }
+    .ac-item {
+      padding: 9px 14px; cursor: pointer; font-size: .9rem;
+      color: var(--text-muted); transition: background .1s, color .1s;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .ac-item:hover, .ac-item.selected { background: var(--accent); color: #fff; }
+    .ac-item .ac-initial {
+      width: 28px; height: 28px; border-radius: 50%;
+      background: var(--accent-glow); display: flex; align-items: center; justify-content: center;
+      font-size: .8rem; font-weight: 700; color: var(--accent-light); flex-shrink: 0;
+    }
+    .ac-item:hover .ac-initial, .ac-item.selected .ac-initial { background: rgba(255,255,255,.2); color: #fff; }
+    .ac-empty { padding: 12px 14px; font-size: .85rem; color: var(--text-dim); text-align: center; }
+
+    /* Help panel */
+    #help-panel {
+      display: none; position: absolute; bottom: calc(100% + 6px); left: 20px; right: 20px;
+      background: var(--surface); border: 1px solid var(--accent);
+      border-radius: 12px; overflow: hidden;
+      box-shadow: 0 -10px 40px rgba(0,0,0,.5); z-index: 50;
+    }
+    #help-panel.open { display: block; }
+    .help-header {
+      padding: 10px 16px; background: var(--accent);
+      font-size: .8rem; font-weight: 800; letter-spacing: .06em;
+      text-transform: uppercase; display: flex; align-items: center; justify-content: space-between;
+    }
+    .help-close {
+      background: none; border: none; color: rgba(255,255,255,.7);
+      cursor: pointer; font-size: 1rem; padding: 0; line-height: 1;
+    }
+    .help-close:hover { color: #fff; }
+    .help-row {
+      display: flex; align-items: flex-start; gap: 12px;
+      padding: 9px 16px; border-bottom: 1px solid var(--border);
+      font-size: .825rem;
+    }
+    .help-row:last-child { border-bottom: none; }
+    .help-cmd { color: var(--accent-light); font-weight: 700; font-family: monospace; min-width: 200px; white-space: nowrap; }
+    .help-desc { color: var(--text-muted); }
+
+    /* Muted notice */
+    #muted-notice {
+      display: none; padding: 6px 20px;
+      background: var(--danger-dim); border-top: 1px solid rgba(248,113,113,.2);
+      font-size: .8rem; color: var(--danger); text-align: center;
+    }
+    #muted-notice.show { display: block; }
+
+    .input-bar {
+      display: flex; gap: 10px; padding: 14px 20px;
+      background: var(--bg2); border-top: 1px solid var(--border);
+    }
+    .msg-input {
+      flex: 1; padding: 11px 15px;
+      background: var(--surface); border: 1.5px solid var(--border);
+      border-radius: 12px; color: var(--text); font-size: .9rem;
+      font-family: inherit; outline: none; transition: border-color .18s;
+    }
+    .msg-input::placeholder { color: var(--text-dim); }
+    .msg-input:focus { border-color: var(--accent); }
+    .msg-input.owner-mode { border-color: var(--gold); }
+    .msg-input.owner-mode:focus { box-shadow: 0 0 0 3px var(--gold-dim); }
+    .btn-send {
+      padding: 11px 20px; background: var(--accent); border: none;
+      border-radius: 12px; color: #fff; font-size: .875rem; font-weight: 600;
+      cursor: pointer; font-family: inherit;
+      transition: background .15s, transform .1s;
+      box-shadow: 0 4px 14px var(--accent-glow); white-space: nowrap;
+    }
+    .btn-send:hover { background: var(--accent-h); }
+    .btn-send:active { transform: scale(.96); }
+    .btn-send:disabled { opacity: .4; cursor: not-allowed; transform: none; }
+
+    /* ─── PROFILE MODAL ──────────────────────────────── */
+    .overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,.65); backdrop-filter: blur(5px);
+      align-items: center; justify-content: center; z-index: 200; padding: 20px;
+    }
+    .overlay.open { display: flex; }
+    .modal {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 22px; padding: 34px 32px; width: 100%; max-width: 340px;
+      text-align: center; box-shadow: 0 30px 70px rgba(0,0,0,.6);
+      animation: modalIn .2s ease-out;
+    }
+    @keyframes modalIn { from{opacity:0;transform:scale(.94) translateY(12px)} to{opacity:1;transform:scale(1) translateY(0)} }
+    .modal-avi {
+      width: 68px; height: 68px; border-radius: 50%;
+      background: linear-gradient(135deg, var(--accent), var(--accent-light));
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.7rem; font-weight: 800; color: #fff;
+      margin: 0 auto 14px; box-shadow: 0 8px 24px var(--accent-glow);
+    }
+    .modal-name { font-size: 1.3rem; font-weight: 700; margin-bottom: 6px; display: flex; align-items: center; justify-content: center; gap: 8px; }
+    .modal-email-label { font-size: .7rem; font-weight: 700; color: var(--text-dim); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 5px; }
+    .modal-email {
+      font-size: .875rem; color: var(--text-muted);
+      background: var(--bg2); border: 1px solid var(--border);
+      border-radius: 9px; padding: 9px 14px; margin-bottom: 22px; word-break: break-all;
+    }
+    .btn-close {
+      padding: 9px 24px; background: var(--bg3); border: 1px solid var(--border);
+      border-radius: 10px; color: var(--text-muted); font-size: .875rem;
+      cursor: pointer; font-family: inherit; transition: all .18s;
+    }
+    .btn-close:hover { background: var(--surface2); color: var(--text); }
+
+    /* Command feedback toast */
+    #cmd-toast {
+      position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%) translateY(20px);
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 10px; padding: 10px 20px;
+      font-size: .875rem; color: var(--text); white-space: nowrap;
+      box-shadow: 0 10px 30px rgba(0,0,0,.5); opacity: 0;
+      transition: opacity .25s, transform .25s; pointer-events: none; z-index: 300;
+    }
+    #cmd-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+    #cmd-toast.ok  { border-color: var(--green); color: var(--green); }
+    #cmd-toast.err { border-color: var(--danger); color: var(--danger); }
+  </style>
+</head>
+<body>
+
+<!-- Loader -->
+<div id="loader"><span class="dot-spin"></span>Loading...</div>
+
+<!-- Ban Screen -->
+<div id="ban-screen">
+  <div class="ban-card">
+    <div class="ban-icon">🔨</div>
+    <div class="ban-title">You are banned</div>
+    <div class="ban-sub">You have been banned from ian baz chat room.</div>
+    <div class="ban-detail" id="ban-detail">
+      Loading ban info...
+    </div>
+    <div class="ban-expires" id="ban-expires"></div>
+  </div>
+</div>
+
+<!-- Username Picker (shown when logged in but no profile exists) -->
+<div id="username-screen">
+  <div class="auth-card">
+    <div class="auth-brand">
+      <div class="auth-brand-icon">✏️</div>
+      <div class="auth-brand-name">Pick a username</div>
+      <div class="auth-brand-sub">You're almost in — just choose a username</div>
+    </div>
+    <div class="form-err" id="un-err"></div>
+    <div class="field">
+      <label class="field-label">Username</label>
+      <input class="field-input" id="un-user" type="text" placeholder="cooluser123" autocomplete="username">
+      <div class="field-err" id="un-user-err"></div>
+    </div>
+    <button class="btn-primary" id="un-btn" onclick="doSetUsername()">Enter Chat</button>
+  </div>
+</div>
+
+<!-- Auth Screen -->
+<div id="auth-screen">
+  <div class="auth-card">
+    <div class="auth-brand">
+      <div class="auth-brand-icon">💬</div>
+      <div class="auth-brand-name">ian baz chat room</div>
+      <div class="auth-brand-sub">by abdel</div>
+    </div>
+    <div class="tabs">
+      <button class="tab active" id="tab-login"  onclick="showTab('login')">Login</button>
+      <button class="tab"        id="tab-signup" onclick="showTab('signup')">Sign Up</button>
+    </div>
+
+    <!-- LOGIN -->
+    <div class="form-panel visible" id="panel-login">
+      <div class="form-err" id="login-err"></div>
+      <div class="field">
+        <label class="field-label">Email</label>
+        <input class="field-input" id="li-email" type="email" placeholder="you@example.com" autocomplete="email">
+        <div class="field-err" id="li-email-err"></div>
+      </div>
+      <div class="field">
+        <label class="field-label">Password</label>
+        <input class="field-input" id="li-pass" type="password" placeholder="••••••••" autocomplete="current-password">
+        <div class="field-err" id="li-pass-err"></div>
+      </div>
+      <button class="btn-primary" id="li-btn" onclick="doLogin()">Login</button>
+    </div>
+
+    <!-- SIGNUP -->
+    <div class="form-panel" id="panel-signup">
+      <div class="form-err" id="su-err"></div>
+      <div class="field">
+        <label class="field-label">Email</label>
+        <input class="field-input" id="su-email" type="email" placeholder="you@example.com" autocomplete="email">
+        <div class="field-err" id="su-email-err"></div>
+      </div>
+      <div class="field">
+        <label class="field-label">Username</label>
+        <input class="field-input" id="su-user" type="text" placeholder="cooluser123" autocomplete="username">
+        <div class="field-err" id="su-user-err"></div>
+      </div>
+      <div class="field">
+        <label class="field-label">Password</label>
+        <input class="field-input" id="su-pass" type="password" placeholder="min 6 characters" autocomplete="new-password">
+        <div class="field-err" id="su-pass-err"></div>
+      </div>
+      <button class="btn-primary" id="su-btn" onclick="doSignup()">Create Account</button>
+    </div>
+  </div>
+</div>
+
+<!-- Chat Screen -->
+<div id="chat-screen">
+  <div class="chat-header">
+    <div class="chat-title">ian baz chat room by abdel</div>
+    <div class="chat-header-right">
+      <div class="chat-me">Chatting as <b id="hdr-name">—</b></div>
+      <button class="btn-logout" onclick="doLogout()">Logout</button>
+    </div>
+  </div>
+
+  <div class="msg-list" id="msg-list">
+    <div class="empty" id="empty-state">
+      <div class="empty-icon">💬</div>
+      <div class="empty-title">No messages yet</div>
+      <div class="empty-sub">Be the first to say something!</div>
+    </div>
+  </div>
+
+  <div id="muted-notice">You are muted and cannot send messages.</div>
+
+  <div class="input-wrap">
+    <div id="autocomplete">
+      <div class="ac-header">Select a user — Tab or click</div>
+      <div id="ac-list"></div>
+    </div>
+    <div id="help-panel">
+      <div class="help-header">
+        Owner Commands
+        <button class="help-close" onclick="closeHelp()">✕</button>
+      </div>
+      <div id="help-list"></div>
+    </div>
+    <div class="input-bar">
+      <input class="msg-input" id="msg-input" type="text"
+        placeholder="Type a message or !help for commands..."
+        onkeydown="onMsgKey(event)" oninput="onMsgInput(event)" maxlength="1000" autocomplete="off">
+      <button class="btn-send" id="send-btn" onclick="doSend()">Send</button>
+    </div>
+  </div>
+</div>
+
+<!-- Profile Modal -->
+<div class="overlay" id="profile-overlay" onclick="onOverlayClick(event)">
+  <div class="modal">
+    <div class="modal-avi" id="modal-avi">?</div>
+    <div class="modal-name" id="modal-name"></div>
+    <div class="modal-email-label">Email</div>
+    <div class="modal-email" id="modal-email">Loading...</div>
+    <button class="btn-close" onclick="closeProfile()">Close</button>
+  </div>
+</div>
+
+<!-- Command feedback toast -->
+<div id="cmd-toast"></div>
+
+<script>
+// ─── CONFIG ─────────────────────────────────────────────────────────────────
+const OWNER_EMAIL = 'abdela5@educbe.ca';
+
+const COMMANDS = [
+  { cmd: '!help',               desc: 'Show this command list' },
+  { cmd: '!ban <user> [time]',  desc: 'Ban user. Time: 1h 6h 1d 7d 30d forever (default: forever)' },
+  { cmd: '!unban <user>',       desc: 'Remove a ban from a user' },
+  { cmd: '!kick <user>',        desc: 'Kick user (1-hour ban)' },
+  { cmd: '!mute <user> [time]', desc: 'Mute user (can chat but messages blocked). Same time options.' },
+  { cmd: '!unmute <user>',      desc: 'Unmute a user' },
+  { cmd: '!rename <user> <new>',desc: "Change a user's username" },
+  { cmd: '!announce <text>',    desc: 'Send a highlighted announcement to the room' },
+  { cmd: '!clear',              desc: 'Delete all chat messages' },
+  { cmd: '!bans',               desc: 'List all active bans and mutes' },
+];
+
+// Commands where the first arg is a username (for autocomplete)
+const USERNAME_CMDS = ['!ban','!unban','!kick','!mute','!unmute','!rename'];
+
+// ─── SUPABASE ────────────────────────────────────────────────────────────────
+const { createClient } = supabase;
+const sb = createClient(
+  'https://cxjdalgzmacmphrkuxwh.supabase.co',
+  'sb_publishable_I9G7amKj-kdvVnFJ5_qVqA_4kRH9C0n'
+);
+
+// ─── STATE ───────────────────────────────────────────────────────────────────
+let me        = null;
+let myProfile = null;
+let isOwner   = false;
+let allUsers  = [];     // [{id, username, email}]
+let msgCache  = [];
+let channel   = null;
+let acSelected = -1;   // autocomplete selection index
+
+// ─── INIT ────────────────────────────────────────────────────────────────────
+(async () => {
+  const { data: { session } } = await sb.auth.getSession();
+  if (session) {
+    me = session.user;
+    const banInfo = await checkBan(null, me.email);
+    if (banInfo) { showBanScreen(banInfo); return; }
+    await fetchProfile();
+    if (!myProfile) { enterUsernameScreen(); return; }
+    isOwner = me.email.toLowerCase() === OWNER_EMAIL.toLowerCase();
+    if (isOwner) await fetchAllUsers();
+    enterChat();
+  } else {
+    enterAuth();
+  }
+})();
+
+// ─── BAN CHECK ───────────────────────────────────────────────────────────────
+async function checkBan(username, email) {
+  // Query bans table for this user
+  const now = new Date().toISOString();
+  let q = sb.from('bans').select('*').eq('type','ban')
+    .or(`target_email.eq.${email}${username ? `,target_username.eq.${username}` : ''}`)
+    .or(`expires_at.is.null,expires_at.gt.${now}`)
+    .limit(1);
+  const { data } = await q;
+  return data && data.length > 0 ? data[0] : null;
+}
+
+async function checkMute(username) {
+  if (!username) return null;
+  const now = new Date().toISOString();
+  const { data } = await sb.from('bans').select('*').eq('type','mute')
+    .eq('target_username', username)
+    .or(`expires_at.is.null,expires_at.gt.${now}`)
+    .limit(1);
+  return data && data.length > 0 ? data[0] : null;
+}
+
+function showBanScreen(ban) {
+  hide('loader'); hide('auth-screen'); hide('chat-screen');
+  show('ban-screen', 'flex');
+  document.getElementById('ban-detail').innerHTML =
+    `<b>Banned by:</b> ${esc(ban.banned_by)}<br><b>Reason:</b> ${esc(ban.reason || 'No reason given')}`;
+  document.getElementById('ban-expires').textContent =
+    ban.expires_at
+      ? `Expires: ${new Date(ban.expires_at).toLocaleString()}`
+      : 'This ban is permanent.';
+}
+
+// ─── SCREENS ─────────────────────────────────────────────────────────────────
+function enterAuth() {
+  hide('loader'); hide('chat-screen'); hide('username-screen');
+  show('auth-screen','flex');
+}
+
+function enterUsernameScreen() {
+  hide('loader'); hide('auth-screen'); hide('chat-screen');
+  show('username-screen', 'flex');
+  document.getElementById('un-user').focus();
+}
+
+async function doSetUsername() {
+  const username = document.getElementById('un-user').value.trim().toLowerCase().replace(/\s+/g,'');
+  const errEl = document.getElementById('un-user-err');
+  const formErrEl = document.getElementById('un-err');
+  errEl.textContent = ''; errEl.classList.remove('show');
+  formErrEl.textContent = ''; formErrEl.classList.remove('show');
+  document.getElementById('un-user').classList.remove('is-error');
+
+  if (!username) {
+    document.getElementById('un-user').classList.add('is-error');
+    errEl.textContent = 'Username is required'; errEl.classList.add('show'); return;
+  }
+  if (username.length < 3) {
+    document.getElementById('un-user').classList.add('is-error');
+    errEl.textContent = 'At least 3 characters'; errEl.classList.add('show'); return;
+  }
+  if (!/^[a-z0-9_]+$/.test(username)) {
+    document.getElementById('un-user').classList.add('is-error');
+    errEl.textContent = 'Letters, numbers, underscores only'; errEl.classList.add('show'); return;
+  }
+
+  setBtn('un-btn', 'Checking…', true);
+  const { data: taken } = await sb.from('profiles').select('id').eq('username', username).maybeSingle();
+  if (taken) {
+    document.getElementById('un-user').classList.add('is-error');
+    errEl.textContent = 'Username already taken'; errEl.classList.add('show');
+    setBtn('un-btn', 'Enter Chat', false); return;
+  }
+
+  setBtn('un-btn', 'Saving…', true);
+  const { error } = await sb.from('profiles').insert({ id: me.id, username, email: me.email });
+  setBtn('un-btn', 'Enter Chat', false);
+
+  if (error) {
+    if (error.code === '23505') {
+      document.getElementById('un-user').classList.add('is-error');
+      errEl.textContent = 'Username already taken'; errEl.classList.add('show');
+    } else {
+      formErrEl.textContent = 'Something went wrong, try again'; formErrEl.classList.add('show');
+    }
+    return;
+  }
+
+  await fetchProfile();
+  isOwner = me.email.toLowerCase() === OWNER_EMAIL.toLowerCase();
+  if (isOwner) await fetchAllUsers();
+  enterChat();
+}
+
+function enterChat() {
+  hide('loader'); hide('auth-screen'); hide('username-screen');
+  show('chat-screen', 'flex');
+  document.getElementById('hdr-name').textContent = myProfile?.username || me.email;
+  buildHelp();
+  loadMessages();
+  startRealtime();
+  checkMuteStatus();
+}
+
+async function checkMuteStatus() {
+  if (!myProfile) return;
+  const mute = await checkMute(myProfile.username);
+  document.getElementById('muted-notice').classList.toggle('show', !!mute);
+  document.getElementById('msg-input').disabled = !!mute;
+  document.getElementById('send-btn').disabled  = !!mute;
+}
+
+// ─── TABS ─────────────────────────────────────────────────────────────────────
+function showTab(tab) {
+  const isLogin = tab === 'login';
+  toggle('panel-login',  isLogin);
+  toggle('panel-signup', !isLogin);
+  document.getElementById('tab-login') .classList.toggle('active',  isLogin);
+  document.getElementById('tab-signup').classList.toggle('active', !isLogin);
+  clearErrors();
+}
+
+// ─── ERRORS ──────────────────────────────────────────────────────────────────
+function clearErrors() {
+  document.querySelectorAll('.field-err, .form-err').forEach(el => {
+    el.textContent = ''; el.classList.remove('show');
+  });
+  document.querySelectorAll('.field-input').forEach(el => el.classList.remove('is-error'));
+}
+function fieldErr(inputId, errId, msg) {
+  document.getElementById(inputId).classList.add('is-error');
+  const el = document.getElementById(errId);
+  el.textContent = msg; el.classList.add('show');
+}
+function formErr(id, msg) {
+  const el = document.getElementById(id);
+  el.textContent = msg; el.classList.add('show');
+}
+
+// ─── LOGIN ────────────────────────────────────────────────────────────────────
+async function doLogin() {
+  clearErrors();
+  const email = val('li-email'), pass = val('li-pass');
+  if (!email) { fieldErr('li-email','li-email-err','Email is required'); return; }
+  if (!pass)  { fieldErr('li-pass','li-pass-err','Password is required'); return; }
+
+  setBtn('li-btn','Logging in…',true);
+  const { data, error } = await sb.auth.signInWithPassword({ email, password: pass });
+  setBtn('li-btn','Login',false);
+  if (error) { formErr('login-err','Incorrect email or password'); return; }
+
+  me = data.user;
+  await fetchProfile();
+
+  const banInfo = await checkBan(myProfile?.username || null, me.email);
+  if (banInfo) { showBanScreen(banInfo); return; }
+
+  if (!myProfile) { enterUsernameScreen(); return; }
+
+  isOwner = me.email.toLowerCase() === OWNER_EMAIL.toLowerCase();
+  if (isOwner) await fetchAllUsers();
+  enterChat();
+}
+
+// ─── SIGNUP ───────────────────────────────────────────────────────────────────
+async function doSignup() {
+  clearErrors();
+  const email    = val('su-email');
+  const username = val('su-user').toLowerCase().replace(/\s+/g,'');
+  const pass     = val('su-pass');
+
+  if (!email)    { fieldErr('su-email','su-email-err','Email is required'); return; }
+  if (!username) { fieldErr('su-user','su-user-err','Username is required'); return; }
+  if (username.length < 3) { fieldErr('su-user','su-user-err','At least 3 characters'); return; }
+  if (!/^[a-z0-9_]+$/.test(username)) {
+    fieldErr('su-user','su-user-err','Letters, numbers, underscores only'); return;
+  }
+  if (!pass)         { fieldErr('su-pass','su-pass-err','Password is required'); return; }
+  if (pass.length<6) { fieldErr('su-pass','su-pass-err','At least 6 characters'); return; }
+
+  setBtn('su-btn','Checking username…',true);
+  const { data: taken } = await sb.from('profiles').select('id').eq('username', username).maybeSingle();
+  if (taken) {
+    fieldErr('su-user','su-user-err','Username already taken');
+    setBtn('su-btn','Create Account',false); return;
+  }
+
+  setBtn('su-btn','Creating account…',true);
+  const { data, error } = await sb.auth.signUp({ email, password: pass, options: { data: { username } } });
+  if (error) {
+    setBtn('su-btn','Create Account',false);
+    const msg = (error.message||'').toLowerCase();
+    if (msg.includes('already')||msg.includes('registered')||msg.includes('email')) {
+      fieldErr('su-email','su-email-err','Email already taken');
+    } else { formErr('su-err', error.message); }
+    return;
+  }
+  if (!data.user || data.user.identities?.length === 0) {
+    setBtn('su-btn','Create Account',false);
+    fieldErr('su-email','su-email-err','Email already taken'); return;
+  }
+
+  const { error: pErr } = await sb.from('profiles').insert({
+    id: data.user.id, username, email
+  });
+  setBtn('su-btn','Create Account',false);
+  if (pErr) {
+    if (pErr.code === '23505') {
+      if (pErr.message.includes('username')) fieldErr('su-user','su-user-err','Username already taken');
+      else fieldErr('su-email','su-email-err','Email already taken');
+    } else { formErr('su-err','Failed to save profile'); }
+    return;
+  }
+
+  // Auto-login immediately after signup (bypasses email confirmation)
+  const { data: loginData, error: loginErr } = await sb.auth.signInWithPassword({ email, password: pass });
+  setBtn('su-btn','Create Account',false);
+  if (loginErr) {
+    formErr('su-err','Account created! Please log in manually.');
+    showTab('login');
+    document.getElementById('li-email').value = email;
+    return;
+  }
+
+  me = loginData.user;
+  await fetchProfile();
+  isOwner = me.email.toLowerCase() === OWNER_EMAIL.toLowerCase();
+  if (isOwner) await fetchAllUsers();
+  enterChat();
+}
+
+// ─── LOGOUT ──────────────────────────────────────────────────────────────────
+async function doLogout() {
+  if (channel) { await sb.removeChannel(channel); channel = null; }
+  await sb.auth.signOut();
+  me = null; myProfile = null; isOwner = false; msgCache = []; allUsers = [];
+  document.getElementById('msg-list').innerHTML = emptyHTML();
+  clearErrors();
+  enterAuth();
+}
+
+// ─── PROFILES ────────────────────────────────────────────────────────────────
+async function fetchProfile() {
+  const { data, error } = await sb.from('profiles').select('*').eq('id', me.id).single();
+  if (data) {
+    myProfile = data;
+  } else {
+    // Fallback: use username stored in auth metadata (set during signup)
+    const meta = me.user_metadata || {};
+    const fallbackUsername = meta.username || null;
+    myProfile = fallbackUsername
+      ? { id: me.id, username: fallbackUsername, email: me.email }
+      : null;
+  }
+}
+
+async function fetchAllUsers() {
+  const { data } = await sb.from('profiles').select('id,username,email').order('username');
+  allUsers = data || [];
+}
+
+// ─── MESSAGES ────────────────────────────────────────────────────────────────
+async function loadMessages() {
+  const { data } = await sb.from('messages').select('*').order('created_at',{ascending:true}).limit(100);
+  msgCache = data || [];
+  renderAll();
+  scrollBottom(false);
+}
+
+function renderAll() {
+  const list = document.getElementById('msg-list');
+  if (!msgCache.length) { list.innerHTML = emptyHTML(); return; }
+  list.innerHTML = msgCache.map(renderMsg).join('');
+}
+
+function renderMsg(m) {
+  if (m.content && m.content.startsWith('__SYS__:')) {
+    const text = esc(m.content.slice(8));
+    const time = new Date(m.created_at).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+    return `
+      <div class="msg-row sys">
+        <div class="msg-bubble-sys">
+          <div class="sys-label">Announcement</div>
+          ${text}
+        </div>
+        <span style="font-size:.68rem;color:var(--text-dim);margin-top:3px;">${time}</span>
+      </div>`;
+  }
+  const own  = m.user_id === me.id;
+  const time = new Date(m.created_at).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+  const name = esc(m.username);
+  const body = esc(m.content);
+  const ownerOfMsg = m.username.toLowerCase() === OWNER_EMAIL.split('@')[0].toLowerCase()
+    || (m.user_id && m.user_email && m.user_email.toLowerCase() === OWNER_EMAIL.toLowerCase());
+  // We can't know owner from message alone, so we check owner_flag if present
+  const isOwnerMsg = m.is_owner === true;
+  const ownerTag = isOwnerMsg
+    ? `<span class="owner-tag">👑 Owner</span>`
+    : '';
+  return `
+    <div class="msg-row ${own ? 'own' : 'other'}">
+      <div class="msg-meta">
+        <button class="msg-name" onclick="openProfile('${name}')">${name}</button>
+        ${ownerTag}
+        <span class="msg-time">${time}</span>
+      </div>
+      <div class="msg-bubble">${body}</div>
+    </div>`;
+}
+
+function appendMsg(m) {
+  const list = document.getElementById('msg-list');
+  const empty = document.getElementById('empty-state');
+  if (empty) empty.remove();
+  const div = document.createElement('div');
+  div.innerHTML = renderMsg(m);
+  list.appendChild(div.firstElementChild);
+  scrollBottom(true);
+}
+
+function startRealtime() {
+  channel = sb.channel('room:messages')
+    .on('postgres_changes', {event:'INSERT',schema:'public',table:'messages'}, ({new: m}) => {
+      if (!msgCache.find(x => x.id === m.id)) {
+        msgCache.push(m);
+        appendMsg(m);
+      }
+    })
+    .on('postgres_changes', {event:'DELETE',schema:'public',table:'messages'}, () => {
+      msgCache = [];
+      document.getElementById('msg-list').innerHTML = emptyHTML();
+    })
+    .subscribe();
+}
+
+async function doSend() {
+  const input   = document.getElementById('msg-input');
+  const content = input.value.trim();
+  if (!content) return;
+
+  // Owner commands
+  if (isOwner && content.startsWith('!')) {
+    input.value = '';
+    closeAC();
+    await handleCommand(content);
+    return;
+  }
+
+  // Non-owner trying to use commands
+  if (content.startsWith('!')) {
+    toast('Commands are owner-only.', 'err');
+    input.value = '';
+    return;
+  }
+
+  const username = myProfile?.username;
+  if (!username) {
+    toast('Could not load your username — try logging out and back in.', 'err');
+    return;
+  }
+
+  document.getElementById('send-btn').disabled = true;
+  input.value = '';
+  input.focus();
+
+  const { data, error } = await sb.from('messages').insert({
+    user_id:  me.id,
+    username,
+    content,
+    is_owner: isOwner
+  }).select().single();
+
+  document.getElementById('send-btn').disabled = false;
+
+  if (!error && data) {
+    if (!msgCache.find(x => x.id === data.id)) {
+      msgCache.push(data);
+      appendMsg(data);
+    }
+  } else if (error) {
+    input.value = content;
+  }
+}
+
+function onMsgKey(e) {
+  const ac = document.getElementById('autocomplete');
+  if (ac.classList.contains('open')) {
+    const items = ac.querySelectorAll('.ac-item');
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      acSelected = Math.min(acSelected + 1, items.length - 1);
+      updateACSelection(items);
+      return;
+    }
+    if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      acSelected = Math.max(acSelected - 1, 0);
+      updateACSelection(items);
+      return;
+    }
+    if (e.key === 'Tab' || e.key === 'Enter') {
+      e.preventDefault();
+      if (acSelected >= 0 && items[acSelected]) {
+        selectACItem(items[acSelected].dataset.username);
+      } else if (items.length > 0) {
+        selectACItem(items[0].dataset.username);
+      }
+      return;
+    }
+    if (e.key === 'Escape') { closeAC(); return; }
+  }
+
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault(); doSend();
+  }
+}
+
+function updateACSelection(items) {
+  items.forEach((el, i) => el.classList.toggle('selected', i === acSelected));
+}
+
+function selectACItem(username) {
+  const input = document.getElementById('msg-input');
+  const parts = input.value.split(' ');
+  // Replace the partial username (last typed word after command)
+  parts[1] = username;
+  input.value = parts.join(' ') + ' ';
+  input.focus();
+  closeAC();
+  acSelected = -1;
+}
+
+function onMsgInput() {
+  if (!isOwner) return;
+  const val = document.getElementById('msg-input').value;
+  const input = document.getElementById('msg-input');
+
+  // Highlight gold if typing a command
+  input.classList.toggle('owner-mode', val.startsWith('!'));
+
+  // Close help if typing something else
+  if (!val.startsWith('!help')) closeHelp();
+
+  // Detect autocomplete trigger
+  const parts = val.split(' ');
+  const cmd   = parts[0].toLowerCase();
+  const partial = parts[1] !== undefined ? parts[1] : null;
+
+  if (parts.length >= 2 && USERNAME_CMDS.includes(cmd)) {
+    showAC(partial || '');
+  } else {
+    closeAC();
+  }
+}
+
+function showAC(partial) {
+  const filtered = partial === ''
+    ? allUsers
+    : allUsers.filter(u => u.username.toLowerCase().startsWith(partial.toLowerCase()));
+
+  const list = document.getElementById('ac-list');
+  acSelected = -1;
+
+  if (!filtered.length) {
+    list.innerHTML = `<div class="ac-empty">No users match "${esc(partial)}"</div>`;
+  } else {
+    list.innerHTML = filtered.slice(0, 8).map(u => `
+      <div class="ac-item" data-username="${esc(u.username)}" onclick="selectACItem('${esc(u.username)}')">
+        <div class="ac-initial">${u.username[0].toUpperCase()}</div>
+        ${esc(u.username)}
+      </div>`).join('');
+  }
+  document.getElementById('autocomplete').classList.add('open');
+}
+
+function closeAC() {
+  document.getElementById('autocomplete').classList.remove('open');
+  acSelected = -1;
+}
+
+// ─── COMMANDS ────────────────────────────────────────────────────────────────
+function buildHelp() {
+  if (!isOwner) return;
+  document.getElementById('help-list').innerHTML = COMMANDS.map(c => `
+    <div class="help-row">
+      <span class="help-cmd">${esc(c.cmd)}</span>
+      <span class="help-desc">${esc(c.desc)}</span>
+    </div>`).join('');
+}
+
+function closeHelp() {
+  document.getElementById('help-panel').classList.remove('open');
+}
+
+function parseDuration(str) {
+  if (!str || str === 'forever') return null;
+  const map = { h: 60, d: 1440, w: 10080 };
+  const m = str.match(/^(\d+)([hdw])$/i);
+  if (m) {
+    const mins = parseInt(m[1]) * (map[m[2].toLowerCase()] || 60);
+    return new Date(Date.now() + mins * 60000).toISOString();
+  }
+  // plain number = minutes
+  const mins = parseInt(str);
+  if (!isNaN(mins)) return new Date(Date.now() + mins * 60000).toISOString();
+  return null;
+}
+
+function durationLabel(str) {
+  if (!str || str === 'forever') return 'permanently';
+  return `for ${str}`;
+}
+
+async function handleCommand(raw) {
+  const parts  = raw.trim().split(/\s+/);
+  const cmd    = parts[0].toLowerCase();
+  const arg1   = parts[1] || '';
+  const rest   = parts.slice(2).join(' ');
+
+  if (cmd === '!help') {
+    document.getElementById('help-panel').classList.add('open');
+    return;
+  }
+
+  if (cmd === '!ban' || cmd === '!kick' || cmd === '!mute') {
+    if (!arg1) { toast('Usage: ' + cmd + ' <username> [duration]', 'err'); return; }
+    const duration = cmd === '!kick' ? '1h' : (parts[2] || 'forever');
+    const expires  = cmd === '!kick' ? parseDuration('1h') : parseDuration(duration);
+    const type     = cmd === '!mute' ? 'mute' : 'ban';
+
+    // Get target user info
+    const { data: target } = await sb.from('profiles').select('*').eq('username', arg1.toLowerCase()).maybeSingle();
+    if (!target) { toast(`User "${arg1}" not found`, 'err'); return; }
+
+    // Remove any existing ban/mute first
+    await sb.from('bans').delete().eq('target_username', target.username).eq('type', type);
+
+    const { error } = await sb.from('bans').insert({
+      target_username: target.username,
+      target_user_id:  target.id,
+      target_email:    target.email,
+      banned_by:       myProfile.username,
+      type,
+      reason:          rest || null,
+      expires_at:      expires
+    });
+
+    if (error) { toast('Error: ' + error.message, 'err'); return; }
+
+    const label = type === 'mute' ? 'Muted' : (cmd === '!kick' ? 'Kicked' : 'Banned');
+    toast(`${label} ${target.username} ${durationLabel(duration)}`, 'ok');
+    return;
+  }
+
+  if (cmd === '!unban' || cmd === '!unmute') {
+    if (!arg1) { toast('Usage: ' + cmd + ' <username>', 'err'); return; }
+    const type = cmd === '!unmute' ? 'mute' : 'ban';
+    const { error } = await sb.from('bans').delete()
+      .eq('target_username', arg1.toLowerCase())
+      .eq('type', type);
+    if (error) { toast('Error: ' + error.message, 'err'); return; }
+    toast(`${cmd === '!unmute' ? 'Unmuted' : 'Unbanned'} ${arg1}`, 'ok');
+    return;
+  }
+
+  if (cmd === '!rename') {
+    const newName = rest.trim().toLowerCase().replace(/\s+/g,'');
+    if (!arg1)    { toast('Usage: !rename <user> <newname>', 'err'); return; }
+    if (!newName) { toast('Provide a new username', 'err'); return; }
+    if (!/^[a-z0-9_]+$/.test(newName)) { toast('New name: letters, numbers, underscores only', 'err'); return; }
+
+    // Check new name not taken
+    const { data: taken } = await sb.from('profiles').select('id').eq('username', newName).maybeSingle();
+    if (taken) { toast(`"${newName}" is already taken`, 'err'); return; }
+
+    const { error } = await sb.from('profiles').update({ username: newName }).eq('username', arg1.toLowerCase());
+    if (error) { toast('Error: ' + error.message, 'err'); return; }
+
+    // Refresh user list
+    await fetchAllUsers();
+    toast(`Renamed ${arg1} → ${newName}`, 'ok');
+    return;
+  }
+
+  if (cmd === '!announce') {
+    const text = parts.slice(1).join(' ');
+    if (!text) { toast('Usage: !announce <message>', 'err'); return; }
+    const { error } = await sb.from('messages').insert({
+      user_id:  me.id,
+      username: myProfile.username,
+      content:  '__SYS__:' + text,
+      is_owner: true
+    });
+    if (error) { toast('Error: ' + error.message, 'err'); return; }
+    toast('Announcement sent!', 'ok');
+    return;
+  }
+
+  if (cmd === '!clear') {
+    const { error } = await sb.from('messages').delete().neq('id','00000000-0000-0000-0000-000000000000');
+    if (error) { toast('Error: ' + error.message, 'err'); return; }
+    msgCache = [];
+    document.getElementById('msg-list').innerHTML = emptyHTML();
+    toast('Chat cleared', 'ok');
+    return;
+  }
+
+  if (cmd === '!bans') {
+    const now = new Date().toISOString();
+    const { data } = await sb.from('bans').select('*')
+      .or(`expires_at.is.null,expires_at.gt.${now}`)
+      .order('created_at', { ascending: false });
+
+    if (!data || !data.length) { toast('No active bans or mutes', 'ok'); return; }
+
+    // Show locally in a system-style message in the list
+    const list = document.getElementById('msg-list');
+    const empty = document.getElementById('empty-state');
+    if (empty) empty.remove();
+    const banList = data.map(b =>
+      `${b.type.toUpperCase()}: ${b.target_username} — by ${b.banned_by}${b.expires_at ? ` until ${new Date(b.expires_at).toLocaleString()}` : ' (forever)'}`
+    ).join('\n');
+
+    const div = document.createElement('div');
+    div.className = 'msg-row sys';
+    div.style.animation = 'none';
+    div.innerHTML = `<div class="msg-bubble-sys"><div class="sys-label">Active Bans & Mutes (${data.length})</div>${esc(banList).replace(/\n/g,'<br>')}</div>`;
+    list.appendChild(div);
+    scrollBottom(true);
+    return;
+  }
+
+  toast(`Unknown command: ${cmd}`, 'err');
+}
+
+// ─── PROFILE MODAL ───────────────────────────────────────────────────────────
+async function openProfile(username) {
+  document.getElementById('modal-avi').textContent   = username[0].toUpperCase();
+  document.getElementById('modal-name').innerHTML    =
+    username === myProfile?.username && isOwner
+      ? `${esc(username)} <span class="owner-tag">👑 Owner</span>`
+      : esc(username);
+  document.getElementById('modal-email').textContent = 'Loading…';
+  document.getElementById('profile-overlay').classList.add('open');
+
+  const { data } = await sb.from('profiles').select('*').eq('username', username).maybeSingle();
+  document.getElementById('modal-email').textContent = data ? data.email : 'Not found';
+}
+
+function closeProfile() { document.getElementById('profile-overlay').classList.remove('open'); }
+function onOverlayClick(e) {
+  if (e.target === document.getElementById('profile-overlay')) closeProfile();
+}
+
+// ─── TOAST ────────────────────────────────────────────────────────────────────
+let toastTimer = null;
+function toast(msg, type='ok') {
+  const el = document.getElementById('cmd-toast');
+  el.textContent = msg;
+  el.className   = 'show ' + type;
+  if (toastTimer) clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { el.className = ''; }, 3000);
+}
+
+// ─── KEYBOARD (auth forms) ────────────────────────────────────────────────────
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Enter') return;
+  if (document.getElementById('username-screen').style.display === 'flex') { doSetUsername(); return; }
+  const authScreen = document.getElementById('auth-screen');
+  if (authScreen.style.display !== 'flex') return;
+  if (document.getElementById('panel-login').classList.contains('visible')) doLogin();
+  else doSignup();
+});
+
+// ─── SCROLL ──────────────────────────────────────────────────────────────────
+function scrollBottom(smooth) {
+  const list = document.getElementById('msg-list');
+  list.scrollTo({ top: list.scrollHeight, behavior: smooth ? 'smooth' : 'instant' });
+}
+
+// ─── HELPERS ─────────────────────────────────────────────────────────────────
+const val  = id => document.getElementById(id).value.trim();
+const hide = id => { document.getElementById(id).style.display = 'none'; };
+const show = (id, d='block') => { document.getElementById(id).style.display = d; };
+const toggle = (id, visible) => {
+  document.getElementById(id).classList.toggle('visible', visible);
+};
+const setBtn = (id, txt, disabled) => {
+  const b = document.getElementById(id);
+  b.textContent = txt; b.disabled = disabled;
+};
+const esc = s => String(s)
+  .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+  .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const emptyHTML = () => `
+  <div class="empty" id="empty-state">
+    <div class="empty-icon">💬</div>
+    <div class="empty-title">No messages yet</div>
+    <div class="empty-sub">Be the first to say something!</div>
+  </div>`;
+</script>
+</body>
+</html>
